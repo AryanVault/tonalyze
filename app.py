@@ -1,121 +1,167 @@
-import streamlit as st
+"""Streamlit UI: click a patch of skin in a photo, get the nearest tone and colors to wear."""
+import io
+from pathlib import Path
+
 import numpy as np
-import pandas as pd
-from PIL import Image
-import cv2
+import streamlit as st
+from PIL import Image, ImageOps, UnidentifiedImageError
+from streamlit_image_coordinates import streamlit_image_coordinates
 
-# Function to load dataset
-def load_dataset(csv_path):
-    """Load the skin tone dataset."""
-    dataset = pd.read_csv(csv_path)
-    return dataset
+import components
+import skin_tone
 
-# Function to calculate Euclidean distance between two colors
-def calculate_euclidean_distance(color1, color2):
-    """Calculate the Euclidean distance between two RGB colors."""
-    return np.sqrt(np.sum((np.array(color1) - np.array(color2))**2))
+HERE = Path(__file__).parent
+CSV_PATH = HERE / "colors.csv"
+STYLE_PATH = HERE / "style.css"
 
-# Function to find the closest skin tone
-def find_closest_skin_tone(avg_color, dataset):
-    """Find the closest skin tone and recommended colors."""
-    distances = []
-    for i, row in dataset.iterrows():
-        skin_rgb = [row['Red'], row['Green'], row['Blue']]
-        distance = calculate_euclidean_distance(avg_color, skin_rgb)
-        distances.append(distance)
-    
-    dataset['distance'] = distances
-    closest_match = dataset.loc[dataset['distance'].idxmin()]
-    return closest_match
+DISPLAY_MAX_WIDTH = 1100
+DISPLAY_MAX_HEIGHT = 680
+LOUPE_PX = 160
+SAMPLE_AREAS = {"Fine": 0.01, "Medium": 0.025, "Wide": 0.05}  # share of the photo's short side
+DEFAULT_SAMPLE_AREA = "Medium"
+UPLOAD_TYPES = ["jpg", "jpeg", "png", "webp"]
+FAVICON_BANDS = ((243, 231, 219), (160, 126, 86), (58, 49, 42))  # Monk scale 2, 6 and 9
 
-# Function to display color swatches
-def display_color_swatches(colors):
-    """Display color swatches along with their name and hex code."""
-    swatch_columns = st.columns(len(colors))
-    for i, color in enumerate(colors):
-        with swatch_columns[i]:
-            # Extract color name and hex code (e.g., "Light Brown (#D2B49A)")
-            color_name, hex_code = color.split('(')
-            hex_code = hex_code.strip(')').strip()  # Remove any trailing ')' and spaces
 
-            # Ensure the hex code is valid (starts with "#" and has 6 characters)
-            if hex_code.startswith('#') and len(hex_code) == 7:
-                # Draw the color swatch
-                st.markdown(
-                    f'<div style="background-color:{hex_code}; width: 50px; height: 50px; border-radius: 5px;"></div>',
-                    unsafe_allow_html=True,
-                )
-                st.write(f"{color_name.strip()} ({hex_code})")
+@st.cache_data(show_spinner=False)
+def load_tones():
+    return skin_tone.load_tones(CSV_PATH)
 
-def main():
-    st.title("Skin Tone Color Recommender")
-    st.write("Upload an image and click or move the slider to detect the skin tone.")
 
-    # Upload the CSV file for skin tone dataset
-    csv_file = "colors.csv"
-    dataset = load_dataset(csv_file)
+GREYSCALE_MODES = {"1", "L", "LA", "La", "I", "I;16", "I;16B", "I;16L", "I;16N", "F"}
 
-    # Upload the image
-    uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
-    if uploaded_file is not None:
-        # Load the image using Pillow
-        img = Image.open(uploaded_file)
-        img_array = np.array(img)
 
-        # Display the image in Streamlit
-        st.image(img, caption="Uploaded Image", use_container_width=True)
+class NotAColorPhoto(ValueError):
+    """The photo has no color to read a skin tone from."""
 
-        # Add sliders for X and Y coordinates to simulate a crosshair
-        st.sidebar.subheader("Move the Crosshair")
-        x = st.sidebar.slider("X-coordinate", 0, img.size[0] - 1, img.size[0] // 2)
-        y = st.sidebar.slider("Y-coordinate", 0, img.size[1] - 1, img.size[1] // 2)
 
-        # Visualize the crosshair over the image using a red dot or line
-        img_with_crosshair = img_array.copy()
+def read_photo(data: bytes) -> np.ndarray:
+    """Decode an upload to upright 8-bit RGB.
 
-        # Draw a red crosshair on the image at the selected coordinates
-        cv2.drawMarker(img_with_crosshair, (x, y), (0, 0, 255), markerType=cv2.MARKER_CROSS, markerSize=20, thickness=2)
+    Black-and-white photos are refused rather than guessed at (16-bit grey would
+    otherwise clip to white), and transparent areas become neutral grey so colors
+    hidden under them can't be sampled.
+    """
+    with Image.open(io.BytesIO(data)) as img:
+        if img.mode in GREYSCALE_MODES:
+            raise NotAColorPhoto(img.mode)
+        upright = ImageOps.exif_transpose(img)
+        if upright.has_transparency_data:
+            backdrop = Image.new("RGBA", upright.size, (*skin_tone.PAD_RGB, 255))
+            upright = Image.alpha_composite(backdrop, upright.convert("RGBA"))
+        photo = np.array(upright.convert("RGB"))
+    if skin_tone.is_grayscale(photo):
+        raise NotAColorPhoto("grey RGB")
+    return photo
 
-        # Show the image with the crosshair in Streamlit
-        st.image(img_with_crosshair, caption="Image with Crosshair", use_container_width=True)
 
-        # Get the RGB value of the selected pixel
-        clicked_rgb = img_array[y, x][:3]
+@st.cache_resource(max_entries=2, show_spinner=False)
+def decode_photo(data: bytes) -> tuple[np.ndarray, np.ndarray, float]:
+    """Full-resolution RGB, a display copy, and the scale between them.
 
-        # Display the RGB value of the selected pixel
-        st.write(f"Selected Pixel RGB: {clicked_rgb}")
+    Both arrays are read-only: the cache hands the same objects to every rerun.
+    """
+    full = read_photo(data)
+    display, scale = skin_tone.downscale(full, DISPLAY_MAX_WIDTH, DISPLAY_MAX_HEIGHT)
+    full.setflags(write=False)
+    display.setflags(write=False)
+    return full, display, scale
 
-        # Display the clicked pixel color as a swatch
-        hex_code = f"#{clicked_rgb[0]:02x}{clicked_rgb[1]:02x}{clicked_rgb[2]:02x}".upper()
-        st.subheader("Clicked Pixel Color")
-        st.markdown(
-            f'<div style="background-color:{hex_code}; width: 100px; height: 100px; border-radius: 5px;"></div>',
-            unsafe_allow_html=True,
+
+def point_from_click(click, shape) -> tuple[int, int]:
+    """Map a click on the displayed photo to full-resolution pixels; the centre before any click."""
+    height, width = shape[:2]
+    if not click or not click.get("width") or not click.get("height"):
+        return width // 2, height // 2
+    x = int(click["x"] * width / click["width"])
+    y = int(click["y"] * height / click["height"])
+    return min(max(x, 0), width - 1), min(max(y, 0), height - 1)
+
+
+def photo_width_share(shape) -> float:
+    """Share of the photo column to fill, so a portrait photo ends up no taller than it is wide."""
+    height, width = shape[:2]
+    return min(1.0, width / height)
+
+
+def show_photo(display: np.ndarray, key: str, marked: np.ndarray) -> None:
+    # The component's own "auto" width never shrinks a wide photo, so fill the column instead
+    # and narrow the column for portrait photos.
+    share = photo_width_share(display.shape)
+    target = st.columns([share, 1 - share])[0] if share < 1 else st.container()
+    with target:
+        streamlit_image_coordinates(
+            marked, key=key, use_column_width="always", image_format="JPEG", jpeg_quality=90, cursor="crosshair"
         )
-        st.write(f"Hex Code: {hex_code}")
-        st.write(f"RGB: {clicked_rgb}")
 
-        # Find the closest matching skin tone from the dataset
-        closest_match = find_closest_skin_tone(clicked_rgb, dataset)
-        st.write("Closest Match:")
-        st.write(f"Skin Tone Name: {closest_match['Skin Tone Name']}")
-        st.write(f"Closest RGB Value: [{closest_match['Red']}, {closest_match['Green']}, {closest_match['Blue']}]")
 
-        # Display recommended color swatches for each category
-        st.subheader("Recommended Colors")
-        
-        categories = [
-            ("Warm", closest_match['Recommended Colors (Warm)']),
-            ("Bright", closest_match['Recommended Colors (Bright)']),
-            ("Dark", closest_match['Recommended Colors (Dark)']),
-            ("Pastel", closest_match['Recommended Colors (Pastel)']),
-            ("Metallic", closest_match['Recommended Colors (Metallic)']),
-        ]
+def show_analysis(full: np.ndarray, display: np.ndarray, scale: float, tones, key: str) -> None:
+    photo_col, result_col = st.columns([7, 5], gap="large")
 
-        for category_name, color_list in categories:
-            st.write(f"**{category_name} Colors**")
-            color_names = color_list.split(',')  # Assuming colors are separated by commas
-            display_color_swatches(color_names)
+    with photo_col:
+        area = st.segmented_control(
+            "Sample area", list(SAMPLE_AREAS), default=DEFAULT_SAMPLE_AREA, key="sample_area"
+        ) or DEFAULT_SAMPLE_AREA
+        size = skin_tone.patch_size(full.shape, SAMPLE_AREAS[area])
+        # The click lands in session state before this rerun, so the marker is drawn where it is.
+        x, y = point_from_click(st.session_state.get(key), full.shape)
+        marked = skin_tone.draw_marker(
+            display, round(x * scale), round(y * scale), max(1, round(size * scale)),
+            weight=skin_tone.marker_weight(display.shape),
+        )
+        show_photo(display, key, marked)
+        st.caption("Click the photo to move the sample.")
+
+    sample = skin_tone.sample_color(full, x, y, size)
+    tone, delta_e = skin_tone.closest_tone(sample, tones)
+
+    with result_col:
+        loupe_col, readout_col = st.columns([2, 3], gap="medium")
+        with loupe_col:
+            st.html(components.label("Sample"))
+            st.image(skin_tone.loupe(full, x, y, size, LOUPE_PX * 2), width=LOUPE_PX)
+        with readout_col:
+            st.html(components.readout(sample, tone, delta_e))
+        st.html(components.tone_ruler(tones, tone[skin_tone.NAME_COLUMN]))
+
+    st.html(components.palette(skin_tone.recommendations(tone), skin_tone.to_hex(sample)))
+
+
+def favicon() -> Image.Image:
+    """Three bands, light to deep, for the browser tab."""
+    band = 16
+    icon = Image.new("RGB", (band * 3, band * 3))
+    for i, rgb in enumerate(FAVICON_BANDS):
+        icon.paste(rgb, (0, i * band, band * 3, (i + 1) * band))
+    return icon
+
+
+def main() -> None:
+    st.set_page_config(page_title="Skin Tone Color Match", page_icon=favicon(), layout="wide")
+    st.markdown(f"<style>{STYLE_PATH.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
+    st.html(components.header())
+
+    try:
+        tones = load_tones()
+    except (OSError, ValueError) as err:
+        st.error(f"Couldn't load the skin tone data: {err}")
+        return
+
+    photo = st.file_uploader("Photo", type=UPLOAD_TYPES, label_visibility="collapsed")
+    if photo is None:
+        st.html(components.tone_ruler(tones))
+        return
+
+    try:
+        full, display, scale = decode_photo(photo.getvalue())
+    except NotAColorPhoto:
+        st.error("This looks like a black-and-white photo. Skin tone needs a color photo.")
+        return
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        st.error("That file couldn't be opened as an image. Try a JPG, PNG or WebP.")
+        return
+    show_analysis(full, display, scale, tones, key=f"photo-{photo.file_id}")
+
 
 if __name__ == "__main__":
     main()

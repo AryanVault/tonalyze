@@ -1,0 +1,168 @@
+/* A viewing booth: the page stays neutral grey and ink so it doesn't tint the skin
+   and swatches being judged. The photo and the chips carry all of the color. */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;500&display=swap");
+
+:root {
+  --sk-paper: #f4f4f2;
+  --sk-surface: #ffffff;
+  --sk-ink: #1c1c1c;
+  --sk-ink-2: #5e5e5e;
+  --sk-rule: #d6d6d2;
+  --sk-rule-strong: #b5b5b0;
+  --sk-warn: #8a4b00;
+  --sk-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --sk-serif: "IBM Plex Serif", Georgia, serif;
+  --sk-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* Streamlit chrome */
+[data-testid="stDecoration"] { display: none; }
+[data-testid="stHeader"] { background: transparent; }
+[data-testid="stMainBlockContainer"] { max-width: 1180px; padding-top: 2.75rem; padding-bottom: 4rem; }
+.stApp,
+.stApp p,
+.stApp label,
+.stApp button,
+.stApp input { font-family: var(--sk-sans); }
+.stApp [data-testid="stCaptionContainer"] { color: var(--sk-ink-2); }
+[data-testid="stFileUploaderDropzone"] {
+  background: var(--sk-surface);
+  border: 1px dashed var(--sk-rule-strong);
+  border-radius: 2px;
+}
+
+/* Header */
+.sk-header { margin: 0 0 .5rem; }
+.sk-title {
+  font-family: var(--sk-serif);
+  font-weight: 500;
+  font-size: 2.25rem;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--sk-ink);
+  margin: 0 0 .55rem;
+  padding: 0;
+}
+.sk-lede { font-size: 1rem; line-height: 1.55; color: var(--sk-ink-2); max-width: 42rem; margin: 0; }
+
+/* Labels and data */
+.sk-label {
+  font-family: var(--sk-mono);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--sk-ink-2);
+  margin: 0 0 .55rem;
+}
+.sk-mono { font-family: var(--sk-mono); font-size: .78rem; }
+.sk-section {
+  font-family: var(--sk-serif);
+  font-weight: 500;
+  font-size: 1.3rem;
+  line-height: 1.2;
+  color: var(--sk-ink);
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+/* Readout */
+.sk-tone-name {
+  font-family: var(--sk-serif);
+  font-size: 1.85rem;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--sk-ink);
+  margin: 0 0 .45rem;
+}
+.sk-quality {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .2rem .6rem;
+  font-size: .86rem;
+  color: var(--sk-ink-2);
+  margin: 0 0 1rem;
+}
+.sk-quality .sk-mono { color: var(--sk-ink); border-bottom: 1px dotted var(--sk-rule-strong); cursor: help; }
+.sk-quality.is-poor { color: var(--sk-warn); }
+.sk-compare { display: grid; grid-template-columns: 1fr 1fr; height: 52px; border: 1px solid var(--sk-rule); }
+.sk-compare-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .75rem;
+  margin-top: .45rem;
+  font-size: .8rem;
+  line-height: 1.3;
+  color: var(--sk-ink);
+}
+.sk-compare-legend > span { display: grid; gap: .1rem; }
+.sk-compare-legend .sk-mono { color: var(--sk-ink-2); font-size: .72rem; }
+
+/* Tone ruler */
+.sk-ruler { margin: .25rem 0 1.75rem; }
+.sk-ruler-track { display: flex; height: 18px; border: 1px solid var(--sk-rule); background: var(--sk-surface); }
+.sk-ruler-cell { flex: 1 1 0; position: relative; }
+.sk-ruler-cell.is-match { outline: 2px solid var(--sk-ink); outline-offset: 1px; z-index: 1; }
+.sk-ruler-cell.is-match::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 5px);
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top: 0;
+  border-bottom-color: var(--sk-ink);
+}
+.sk-ruler-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: .8rem;
+  font-family: var(--sk-mono);
+  font-size: .66rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--sk-ink-2);
+}
+
+/* Palette: one paint-sample strip per category; every swatch carries a dot of the sampled skin */
+.sk-palette {
+  container-type: inline-size;
+  margin-top: 1.5rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--sk-rule);
+}
+.sk-strips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+@container (max-width: 860px) {
+  .sk-strips { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 1.25rem; }
+}
+@container (max-width: 560px) {
+  .sk-strips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 340px) {
+  .sk-strips { grid-template-columns: 1fr; }
+}
+.sk-strip-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--sk-surface);
+  border: 1px solid var(--sk-rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.sk-strip-item { display: grid; grid-template-columns: 44% 1fr; min-height: 54px; margin: 0; }
+.sk-strip-item + .sk-strip-item { border-top: 1px solid var(--sk-rule); }
+.sk-swatch { position: relative; }
+.sk-swatch-skin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+}
+.sk-strip-text { display: grid; align-content: center; gap: 2px; padding: 6px 10px; min-width: 0; }
+.sk-swatch-name { font-size: .8rem; line-height: 1.25; color: var(--sk-ink); overflow-wrap: anywhere; }
+.sk-swatch-hex { font-family: var(--sk-mono); font-size: .68rem; color: var(--sk-ink-2); }

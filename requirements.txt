@@ -1,5 +1,6 @@
-opencv-python
-streamlit
-pillow 
-pandas
-numpy
+numpy==2.2.2
+opencv-python==4.11.0.86
+pandas==2.2.3
+pillow==11.1.0
+streamlit==1.41.1
+streamlit-image-coordinates==0.4.1
