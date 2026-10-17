@@ -21,6 +21,9 @@ SAMPLE_AREAS = {"Fine": 0.01, "Medium": 0.025, "Wide": 0.05}  # share of the pho
 DEFAULT_SAMPLE_AREA = "Medium"
 UPLOAD_TYPES = ["jpg", "jpeg", "png", "webp"]
 FAVICON_BANDS = ((243, 231, 219), (160, 126, 86), (58, 49, 42))  # Monk scale 2, 6 and 9
+SAMPLE_PATH = HERE / "samples" / "sample.jpg"  # synthetic; regenerate with samples/make_sample.py
+PRIVACY_NOTE = "Photos are processed in memory and never saved to disk."
+SAMPLE_NOTE = "Showing a sample photo: three skin tones under side light. Upload your own above."
 
 
 @st.cache_data(show_spinner=False)
@@ -127,6 +130,10 @@ def show_analysis(full: np.ndarray, display: np.ndarray, scale: float, tones, ke
     st.html(components.palette(skin_tone.recommendations(tone), skin_tone.to_hex(sample)))
 
 
+def use_sample() -> None:
+    st.session_state["show_sample"] = True
+
+
 def favicon() -> Image.Image:
     """Three bands, light to deep, for the browser tab."""
     band = 16
@@ -148,19 +155,27 @@ def main() -> None:
         return
 
     photo = st.file_uploader("Photo", type=UPLOAD_TYPES, label_visibility="collapsed")
-    if photo is None:
+    st.caption(PRIVACY_NOTE)
+    # An upload always wins; the sample is for visitors who won't upload a photo of themselves.
+    if photo is not None:
+        data, key = photo.getvalue(), f"photo-{photo.file_id}"
+    elif st.session_state.get("show_sample"):
+        st.caption(SAMPLE_NOTE)
+        data, key = SAMPLE_PATH.read_bytes(), "photo-sample"
+    else:
+        st.button("Try a sample photo", key="use_sample", on_click=use_sample)
         st.html(components.tone_ruler(tones))
         return
 
     try:
-        full, display, scale = decode_photo(photo.getvalue())
+        full, display, scale = decode_photo(data)
     except NotAColorPhoto:
         st.error("This looks like a black-and-white photo. Skin tone needs a color photo.")
         return
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         st.error("That file couldn't be opened as an image. Try a JPG, PNG or WebP.")
         return
-    show_analysis(full, display, scale, tones, key=f"photo-{photo.file_id}")
+    show_analysis(full, display, scale, tones, key=key)
 
 
 if __name__ == "__main__":

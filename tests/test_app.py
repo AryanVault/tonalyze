@@ -22,6 +22,23 @@ def test_app_starts_on_the_upload_screen_with_the_reference_tones():
     assert "is-match" not in page
 
 
+def test_upload_screen_says_photos_are_not_saved():
+    at = AppTest.from_file(APP_PATH, default_timeout=APP_TIMEOUT_S).run()
+    assert app.PRIVACY_NOTE in [c.value for c in at.caption]
+
+
+def test_the_sample_photo_ships_with_the_app_and_is_in_color():
+    assert app.read_photo(app.SAMPLE_PATH.read_bytes()).shape == (1200, 1600, 3)
+
+
+def test_sample_button_shows_results_without_an_upload():
+    at = AppTest.from_file(APP_PATH, default_timeout=APP_TIMEOUT_S).run()
+    at.button(key="use_sample").click().run()
+    assert not at.exception
+    assert "Closest tone" in html_blocks(at)
+    assert any("sample photo" in c.value.lower() for c in at.caption)
+
+
 def test_results_render_for_a_photo():
     def script():
         import numpy as np
