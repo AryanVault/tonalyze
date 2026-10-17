@@ -4,6 +4,12 @@ Upload a photo, click an evenly lit patch of skin, and get the closest of 56
 reference skin tones plus colors to wear in five families: warm, bright, dark,
 pastel and metallic.
 
+[![20-second demo video](docs/demo-poster.jpg)](docs/demo.mp4)
+
+No photo handy? **Try a sample photo** on the start screen loads a synthetic
+image with three skin tones under side light. Photos are processed in memory
+and never saved to disk.
+
 ## Run it
 
 ```
@@ -57,6 +63,23 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+## Deploy
+
+The app runs on [Streamlit Community Cloud](https://streamlit.io/cloud) for free:
+
+1. Push this repo to GitHub.
+2. Sign in to Streamlit Community Cloud with GitHub and create a new app from
+   this repo, pointing it at `app.py` on your default branch.
+3. In the advanced settings, pick Python 3.13 (what the pinned versions are
+   tested on).
+
+Every push redeploys. Free apps go to sleep when nobody visits and take about
+a minute to wake up; the demo video above covers that gap.
+
+`requirements.txt` uses `opencv-python-headless` on purpose: Linux cloud hosts
+have no desktop graphics libraries, and the regular `opencv-python` wheel fails
+to import there.
+
 ## Files
 
 | File | What it holds |
@@ -65,6 +88,9 @@ pytest
 | `skin_tone.py` | Sampling, color math and CSV loading (no Streamlit) |
 | `components.py` | HTML for the readout, tone ruler and paint strips |
 | `style.css`, `.streamlit/config.toml` | Look and theme |
+| `samples/sample.jpg` | Synthetic sample photo (regenerate with `samples/make_sample.py`) |
+| `docs/` | Demo video and its poster |
+| `tests/` | The test suite |
 
 ## Known limits
 
