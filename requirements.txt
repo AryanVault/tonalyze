@@ -1,6 +1,6 @@
-numpy==2.2.2
+numpy==2.3.4
 opencv-python-headless==4.11.0.86
-pandas==2.2.3
-pillow==11.1.0
+pandas==2.3.3
+pillow==11.3.0
 streamlit==1.41.1
 streamlit-image-coordinates==0.4.1

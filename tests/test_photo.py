@@ -48,7 +48,7 @@ def test_flattens_transparency_onto_neutral_grey_instead_of_leaking_hidden_color
     "img",
     [
         Image.new("L", (20, 20), 128),
-        Image.fromarray(np.full((20, 20), 40000, np.uint16), mode="I;16"),
+        Image.fromarray(np.full((20, 20), 40000, np.uint16)),  # Pillow infers I;16
         Image.new("RGB", (20, 20), (128, 128, 128)),  # black-and-white saved as RGB
     ],
     ids=["8-bit grey", "16-bit grey", "grey RGB"],
