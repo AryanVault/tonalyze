@@ -72,8 +72,8 @@ The app runs on [Streamlit Community Cloud](https://streamlit.io/cloud) for free
 1. Push this repo to GitHub.
 2. Sign in to Streamlit Community Cloud with GitHub and create a new app from
    this repo, pointing it at `app.py` on your default branch.
-3. In the advanced settings, pick Python 3.13 (what the pinned versions are
-   tested on).
+3. The default Python (3.14) works, and so does 3.13: every pinned package
+   ships prebuilt for both, so nothing gets compiled during the build.
 
 Every push redeploys. Free apps go to sleep when nobody visits and take about
 a minute to wake up; the demo video above covers that gap.
