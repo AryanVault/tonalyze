@@ -4,7 +4,9 @@ Upload a photo, click an evenly lit patch of skin, and get the closest of 56
 reference skin tones plus colors to wear in five families: warm, bright, dark,
 pastel and metallic.
 
-[![20-second demo video](docs/demo-poster.jpg)](docs/demo.mp4)
+![20-second demo: a pixel grid, clicking a skin patch, the readout, paint-strip palettes, fair to deep](docs/demo.gif)
+
+[Watch the demo with sound (MP4, 0.7 MB)](docs/demo.mp4)
 
 No photo handy? **Try a sample photo** on the start screen loads a synthetic
 image with three skin tones under side light. Photos are processed in memory
@@ -89,7 +91,7 @@ to import there.
 | `components.py` | HTML for the readout, tone ruler and paint strips |
 | `style.css`, `.streamlit/config.toml` | Look and theme |
 | `samples/sample.jpg` | Synthetic sample photo (regenerate with `samples/make_sample.py`) |
-| `docs/` | Demo video and its poster |
+| `docs/` | Demo as an inline GIF and as an MP4 with sound |
 | `tests/` | The test suite |
 
 ## Known limits
