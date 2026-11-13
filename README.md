@@ -4,6 +4,9 @@ Upload a photo, click an evenly lit patch of skin, and get the closest of 56
 reference skin tones plus colors to wear in five families: warm, bright, dark,
 pastel and metallic.
 
+**Live app: [tonalyze.streamlit.app](https://tonalyze.streamlit.app)** (if it has been
+idle it takes about a minute to wake up)
+
 ![20-second demo: a pixel grid, clicking a skin patch, the readout, paint-strip palettes, fair to deep](docs/demo.gif)
 
 [Download the demo with sound (MP4, 0.7 MB)](https://github.com/AryanVault/tonalyze/raw/main/docs/demo.mp4)
