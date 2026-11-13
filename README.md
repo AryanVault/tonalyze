@@ -6,7 +6,7 @@ pastel and metallic.
 
 ![20-second demo: a pixel grid, clicking a skin patch, the readout, paint-strip palettes, fair to deep](docs/demo.gif)
 
-[Watch the demo with sound (MP4, 0.7 MB)](docs/demo.mp4)
+[Download the demo with sound (MP4, 0.7 MB)](https://github.com/AryanVault/tonalyze/raw/main/docs/demo.mp4)
 
 No photo handy? **Try a sample photo** on the start screen loads a synthetic
 image with three skin tones under side light. Photos are processed in memory
